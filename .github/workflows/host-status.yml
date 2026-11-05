@@ -1,0 +1,44 @@
+name: Host status
+
+# Kiểm tra từng host trong bảng "Live endpoints" mỗi giờ và cập nhật cột Status.
+# Cron của GitHub Actions có thể trễ vài phút; không đảm bảo đúng phút 0.
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+# Cần quyền ghi để commit README.md trở lại chính repo này.
+permissions:
+  contents: write
+
+# Không cho hai lượt chạy chồng nhau (lượt sau chờ lượt trước).
+concurrency:
+  group: host-status
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Probe hosts and update README
+        run: node .github/scripts/host-status.mjs
+
+      - name: Commit status changes
+        run: |
+          if git diff --quiet -- README.md; then
+            echo "Không có thay đổi trạng thái."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "chore: update host status"
+          git push
