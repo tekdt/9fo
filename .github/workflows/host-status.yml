@@ -1,15 +1,31 @@
 name: Host status
 
-# Kiểm tra từng host trong bảng "Live endpoints" mỗi giờ và cập nhật cột Status.
-# Cron của GitHub Actions có thể trễ vài phút; không đảm bảo đúng phút 0.
+# Mục tiêu: làm mới cột "Status" của bảng "Live endpoints" khoảng mỗi giờ.
+#
+# Vì sao KHÔNG dùng một mốc cron '0 * * * *' duy nhất:
+#   Lịch của GitHub Actions là "best-effort". Từ khoảng 2026-08 nền tảng còn bị
+#   lỗi khiến sự kiện 'schedule' bị trễ nhiều giờ hoặc bị bỏ hẳn, dù cron viết đúng.
+#   Thực tế của chính repo này: các lượt #2..#12 cách nhau 3.5–8.5 giờ, không phải 1 giờ.
+#   Tham khảo: https://github.com/orgs/community/discussions/207346
+#
+# Cách khắc phục (chỉ trong repo này):
+#   1) Đăng ký NHIỀU mốc cron mỗi giờ, cách nhau ~15 phút và lệch khỏi phút :00
+#      (thời điểm GitHub quá tải nhất). Càng nhiều sự kiện thì càng có cơ hội
+#      một sự kiện "sống sót" qua đợt drop của GitHub.
+#   2) Watermark: trước khi dò host, xem lượt chạy THÀNH CÔNG gần nhất. Nếu vừa
+#      chạy trong vòng ~50 phút thì bỏ qua, tránh dò trùng khi GitHub gửi dồn dập.
+#      Nhờ vậy tần suất dò thực tế vẫn ~1 giờ/lần và không bao giờ bỏ lỡ sự kiện
+#      nào đến muộn (vì khi đó đã quá 50 phút).
+#   3) workflow_dispatch giữ nguyên để chạy tay / backfill khi cần.
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '8,23,38,53 * * * *'
   workflow_dispatch:
 
-# Cần quyền ghi để commit README.md trở lại chính repo này.
+# contents: write để commit README.md; actions: read để đọc lượt chạy trước (watermark).
 permissions:
   contents: write
+  actions: read
 
 # Không cho hai lượt chạy chồng nhau (lượt sau chờ lượt trước).
 concurrency:
@@ -23,15 +39,51 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Quyết định có cần dò host không (watermark)
+        id: due
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          # Chạy tay thì luôn dò.
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Chạy tay: dò ngay."
+            exit 0
+          fi
+          # Thời điểm (UTC) của lượt chạy thành công gần nhất. Lượt hiện tại đang
+          # "in_progress" nên không bị tính vào đây.
+          last=$(gh run list --workflow host-status.yml --status success \
+            --limit 1 --json createdAt --jq '.[0].createdAt // empty' 2>/dev/null || true)
+          if [ -z "$last" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Không đọc được lượt chạy trước: dò ngay."
+            exit 0
+          fi
+          now=$(date -u +%s)
+          then=$(date -u -d "$last" +%s 2>/dev/null || echo 0)
+          age=$(( now - then ))
+          if [ "$age" -ge 3000 ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Lượt thành công gần nhất cách đây ${age}s (>= 3000s): dò host."
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Lượt thành công gần nhất cách đây ${age}s (< 3000s): bỏ qua lượt này."
+          fi
+
       - name: Setup Node
+        if: steps.due.outputs.run == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Probe hosts and update README
+        if: steps.due.outputs.run == 'true'
         run: node .github/scripts/host-status.mjs
 
       - name: Commit status changes
+        if: steps.due.outputs.run == 'true'
         run: |
           if git diff --quiet -- README.md; then
             echo "Không có thay đổi trạng thái."
