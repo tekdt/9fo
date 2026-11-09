@@ -17,10 +17,10 @@ provider, so if one host is throttled or down, try another.
 
 | Host | Base URL | Provider (egress) | Region | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| KeritCloud (usa6) | `http://usa6.kerit.cloud:9253` | Proxy list (rotating residential) | Rotating egress | Live | Primary endpoint. Claude Code and OpenCode CLI.| 
+| KeritCloud (usa6) | `http://usa6.kerit.cloud:9253` | WARP | Global | Live | Primary endpoint. Claude Code and OpenCode CLI.| 
 | OptikLink | `http://160.191.77.60:8223` | Sing-Box (use hysteria2 / tuic nodes) | Global | Live | Primary endpoint. Claude Code and OpenCode CLI.|
 | Bot-Hosting | `https://fo.apps.bot-hosting.cloud/` | V2Ray (Xray) | Global | Live | Primary endpoint. Claude Code and OpenCode CLI.|
-| N/A | `Not Available` | WARP | Global | Unknown | Primary endpoint. Claude Code and OpenCode CLI.|
+| KataBump | `http://usa6.kerit.cloud:9253` | Proxy list (rotating residential) | Rotating egress | Unknown | Primary endpoint. Claude Code and OpenCode CLI.|
 
 More hosts are planned. Each new host will run a different provider from the list
 below, which is the set the runner already supports.
