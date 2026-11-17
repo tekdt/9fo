@@ -124,8 +124,8 @@ proxy provider. If one is slow or down, try another.
 | Host | Base URL | Provider (egress) | Region | Status |
 | --- | --- | --- | --- | --- |
 | KeritCloud (usa6) | `http://usa6.kerit.cloud:9253` | WARP | Global | Dead |
-| OptikLink | `http://160.191.77.60:8223` | Sing-Box (hysteria2 / tuic) | Global | Dead |
-| Bot-Hosting | `https://fo.apps.bot-hosting.cloud/` | V2Ray (Xray) | Global | Live |
+| OptikLink | `http://160.191.77.60:8223` | Sing-Box (hysteria2 / tuic) | Global | Live |
+| Bot-Hosting | `https://fo.apps.bot-hosting.cloud/` | V2Ray (Xray) | Global | Degraded |
 | KataBump | `http://51.83.6.7:20305` | Proxy list (rotating residential) | Rotating | Live |
 
 More hosts are planned. Open any host in a browser to copy a ready-made config, or
